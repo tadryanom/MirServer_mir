@@ -1,4 +1,5 @@
-includedir=@INCLUDEDIR@/mirplatforms
+prefix=@CMAKE_INSTALL_PREFIX@
+includedir=${prefix}/@CMAKE_INSTALL_INCLUDEDIR@/mirplatforms
 
 Name: mir-client-platform-mesa
 Description: Mir Mesa client platform development files

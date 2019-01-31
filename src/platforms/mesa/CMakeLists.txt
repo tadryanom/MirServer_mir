@@ -1,5 +1,3 @@
-set(INCLUDEDIR "${CMAKE_INSTALL_PREFIX}/include")
-
 configure_file(
   ${CMAKE_CURRENT_SOURCE_DIR}/mir-client-platform-mesa.pc.in
   ${CMAKE_CURRENT_BINARY_DIR}/mir-client-platform-mesa.pc

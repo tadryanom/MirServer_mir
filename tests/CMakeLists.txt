@@ -196,8 +196,8 @@ PRIVATE
 )
 
 set(PREFIX "${CMAKE_INSTALL_PREFIX}")
-set(LIBDIR "${CMAKE_INSTALL_FULL_LIBDIR}")
-set(INCLUDEDIR "${CMAKE_INSTALL_PREFIX}/include/mirtest")
+set(LIBDIR "")
+set(INCLUDEDIR "/include/mirtest")
 configure_file(
   ${CMAKE_CURRENT_SOURCE_DIR}/mirtest.pc.in
   ${CMAKE_CURRENT_BINARY_DIR}/mirtest.pc

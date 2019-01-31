@@ -1,4 +1,5 @@
-includedir=@INCLUDEDIR@/mirclient
+prefix=@CMAKE_INSTALL_PREFIX@
+includedir=${prefix}/@CMAKE_INSTALL_INCLUDEDIR@/mirclient
 
 Name: mirclientcpp
 Description: C++ wrapper for mirclient
