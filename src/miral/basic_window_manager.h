@@ -285,8 +285,14 @@ private:
     void refocus(Application const& application, Window const& parent,
                  std::vector<std::shared_ptr<Workspace>> const& workspaces_containing_window);
     auto workspaces_containing(Window const& window) const -> std::vector<std::shared_ptr<Workspace>>;
+    /// The display area that the currently active window is on, or the last display area interacted with
+    /// Used by active_output()
     auto active_display_area() const -> std::shared_ptr<DisplayArea>;
+    /// Returns the display area the window is attached to if any
+    /// Otherwise returns the area it overlaps with or is closest to
     auto display_area_for(Window const& window) const -> std::shared_ptr<DisplayArea>;
+    /// Returns the display area the given rect overlaps most with or is closest to
+    auto display_area_for(Rectangle const& window_rect) const -> std::shared_ptr<DisplayArea>;
     /// Returns the application zone area after shrinking it for the exclusive zone if needed
     static auto apply_exclusive_rect_to_application_zone(
         mir::geometry::Rectangle const& original_zone,

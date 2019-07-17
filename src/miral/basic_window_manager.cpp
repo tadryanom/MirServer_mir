@@ -684,6 +684,11 @@ auto miral::BasicWindowManager::display_area_for(Window const& window) const -> 
 
     // If the window is not explicity attached to any area, find the area it overlaps most with
     Rectangle window_rect{window.top_left(), window.size()};
+    return display_area_for(window_rect);
+}
+
+auto miral::BasicWindowManager::display_area_for(Rectangle const& window_rect) const -> std::shared_ptr<DisplayArea>
+{
     int max_overlap_area = 0;
     int min_distance = INT_MAX;
     std::experimental::optional<std::shared_ptr<DisplayArea>> best_area;
@@ -1654,7 +1659,7 @@ auto miral::BasicWindowManager::place_new_surface(WindowSpecification parameters
     if (!parameters.state().is_set())
         parameters.state() = mir_window_state_restored;
 
-    auto const active_output_area = active_display_area()->application_zone.extents();;
+    auto const active_output_area = active_display_area()->application_zone.extents();
     auto const height = parameters.size().value().height.as_int();
 
     bool positioned = false;
