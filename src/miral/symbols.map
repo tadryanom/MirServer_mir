@@ -473,6 +473,7 @@ global:
 MIRAL_2.7 {
 global:
   extern "C++" {
+    miral::WaylandExtensions::zwlr_foreign_toplevel_manager_v1*;
     miral::WindowInfo::application_id*;
     miral::WindowInfo::attached_edges*;
     miral::WindowInfo::exclusive_rect*;

@@ -24,6 +24,7 @@
 #include "xdg_shell_stable.h"
 #include "xdg_output_v1.h"
 #include "layer_shell_v1.h"
+#include "foreign_toplevel_manager_v1.h"
 #include "xwayland_wm_shell.h"
 #include "mir_display.h"
 #include "wl_seat.h"
@@ -56,7 +57,8 @@ auto mf::get_supported_extensions() -> std::vector<std::string>
         mw::XdgWmBase::interface_name,
         mw::XdgShellV6::interface_name,
         mw::LayerShellV1::interface_name,
-        mw::XdgOutputManagerV1::interface_name};
+        mw::XdgOutputManagerV1::interface_name,
+        mw::ForeignToplevelManagerV1::interface_name};
 }
 
 namespace
@@ -107,6 +109,11 @@ auto configure_wayland_extensions(
                 add_extension(
                     mw::XdgOutputManagerV1::interface_name,
                     create_xdg_output_manager_v1(display, output_manager));
+
+            if (extension.find(mw::ForeignToplevelManagerV1::interface_name) != extension.end())
+                add_extension(
+                    mw::ForeignToplevelManagerV1::interface_name,
+                    std::make_shared<mf::ForeignToplevelManagerV1>(display, shell, *seat, output_manager));
 
             if (x11_enabled)
                 add_extension("x11-support", std::make_shared<mf::XWaylandWMShell>(shell, *seat, output_manager));
