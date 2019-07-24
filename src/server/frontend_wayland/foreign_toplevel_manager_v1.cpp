@@ -130,6 +130,7 @@ private:
         ///@{
         void attrib_changed(scene::Surface const*, MirWindowAttrib attrib, int value) override;
         void renamed(scene::Surface const*, char const* name) override;
+        void application_id_set_to(scene::Surface const*, std::string const& application_id) override;
         ///@}
 
         WlSeat& seat; ///< Used to spawn functions on the Wayland thread
@@ -331,6 +332,7 @@ void mf::ForeignToplevelHandleV1::ObserverOwner::Observer::create_toplevel_handl
     wayland_toplevel_handle =
         std::make_shared<std::experimental::optional<ForeignToplevelHandleV1*>>(std::experimental::nullopt);
     std::string name = surface.value()->name();
+    std::string id = surface.value()->application_id();
     auto focused = surface.value()->focus_state();
     auto state = surface.value()->state();
 
@@ -338,6 +340,7 @@ void mf::ForeignToplevelHandleV1::ObserverOwner::Observer::create_toplevel_handl
         [toplevel_manager = wayland_toplevel_manager,
          toplevel_handle = wayland_toplevel_handle.value(),
          name,
+         id,
          focused,
          state]()
         {
@@ -349,7 +352,10 @@ void mf::ForeignToplevelHandleV1::ObserverOwner::Observer::create_toplevel_handl
             if (!*toplevel_handle)
                 BOOST_THROW_EXCEPTION(std::logic_error("toplevel_handle not set up by constructor"));
 
-            toplevel_handle->value()->send_title_event(name);
+            if (!name.empty())
+                toplevel_handle->value()->send_title_event(name);
+            if (!id.empty())
+                toplevel_handle->value()->send_app_id_event(id);
             toplevel_handle->value()->send_state(focused, state);
             toplevel_handle->value()->send_done_event();
         });
@@ -471,6 +477,19 @@ void mf::ForeignToplevelHandleV1::ObserverOwner::Observer::renamed(ms::Surface c
     aquire_toplevel_handle([name](ForeignToplevelHandleV1* toplevel_handle)
         {
             toplevel_handle->send_title_event(name);
+            toplevel_handle->send_done_event();
+        });
+}
+
+void mf::ForeignToplevelHandleV1::ObserverOwner::Observer::application_id_set_to(
+    scene::Surface const*, std::string const& application_id)
+{
+    std::lock_guard<std::mutex> lock{mutex};
+
+    std::string id = application_id;
+    aquire_toplevel_handle([id](ForeignToplevelHandleV1* toplevel_handle)
+        {
+            toplevel_handle->send_app_id_event(id);
             toplevel_handle->send_done_event();
         });
 }
