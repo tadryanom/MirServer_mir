@@ -113,7 +113,7 @@ auto configure_wayland_extensions(
             if (extension.find(mw::ForeignToplevelManagerV1::interface_name) != extension.end())
                 add_extension(
                     mw::ForeignToplevelManagerV1::interface_name,
-                    std::make_shared<mf::ForeignToplevelManagerV1>(display, shell, *seat, output_manager));
+                    std::make_shared<mf::ForeignToplevelManagerV1Global>(display, shell, *seat, output_manager));
 
             if (x11_enabled)
                 add_extension("x11-support", std::make_shared<mf::XWaylandWMShell>(shell, *seat, output_manager));
