@@ -117,11 +117,18 @@ private:
         void invalidate_surface();
 
     private:
+        /// Expects calling function to manage mutex locking
+        /// func is called on the Wayland thread
+        /// func is not called and no error is raised if we don't currently have a toplevel
+        /// func is not called and no error is raised if the Wayland object is destroyed
+        void aquire_toplevel_handle(std::function<void(ForeignToplevelHandleV1*)> func);
         void create_toplevel_handle(); ///< Expects calling function to manage mutex locking
         void destroy_toplevel_handle(); ///< Expects calling function to manage mutex locking
+        void create_or_destroy_toplevel_handle_as_needed(); ///< Expects calling function to manage mutex locking
 
         /// Surface observer
         ///@{
+        void attrib_changed(scene::Surface const*, MirWindowAttrib attrib, int value) override;
         void renamed(scene::Surface const*, char const* name) override;
         ///@}
 
@@ -280,12 +287,13 @@ mf::ForeignToplevelHandleV1::ObserverOwner::Observer::Observer(
       surface{surface},
       wayland_toplevel_manager{wayland_toplevel_manager}
 {
-    create_toplevel_handle();
+    create_or_destroy_toplevel_handle_as_needed();
 }
 
 mf::ForeignToplevelHandleV1::ObserverOwner::Observer::~Observer()
 {
-    destroy_toplevel_handle();
+    if (wayland_toplevel_handle)
+        destroy_toplevel_handle();
 }
 
 void mf::ForeignToplevelHandleV1::ObserverOwner::Observer::invalidate_surface()
@@ -294,11 +302,28 @@ void mf::ForeignToplevelHandleV1::ObserverOwner::Observer::invalidate_surface()
     surface = std::experimental::nullopt;
 }
 
+void mf::ForeignToplevelHandleV1::ObserverOwner::Observer::aquire_toplevel_handle(
+    std::function<void(ForeignToplevelHandleV1*)> func)
+{
+    /// Documented to do nothing if there is no toplevel handle
+    if (!wayland_toplevel_handle)
+        return;
+
+    seat.spawn(
+        [toplevel_handle = wayland_toplevel_handle.value(), func]()
+        {
+            /// Documented to do nothing if the toplevel handle is destroyed
+            if (!*toplevel_handle)
+                return;
+
+            func(toplevel_handle->value());
+        });
+}
+
 void mf::ForeignToplevelHandleV1::ObserverOwner::Observer::create_toplevel_handle()
 {
-    // If there is already a toplevel, we can return
     if (wayland_toplevel_handle)
-        return;
+        BOOST_THROW_EXCEPTION(std::logic_error("create_toplevel_handle() when toplevel already created"));
 
     if (!surface)
         BOOST_THROW_EXCEPTION(std::logic_error("create_toplevel_handle() called after surface was invalidated"));
@@ -306,11 +331,15 @@ void mf::ForeignToplevelHandleV1::ObserverOwner::Observer::create_toplevel_handl
     wayland_toplevel_handle =
         std::make_shared<std::experimental::optional<ForeignToplevelHandleV1*>>(std::experimental::nullopt);
     std::string name = surface.value()->name();
+    auto focused = surface.value()->focus_state();
+    auto state = surface.value()->state();
 
     seat.spawn(
         [toplevel_manager = wayland_toplevel_manager,
          toplevel_handle = wayland_toplevel_handle.value(),
-         name]()
+         name,
+         focused,
+         state]()
         {
             // If the manager has been destroyed we can't create a toplevel handle
             if (!*toplevel_manager)
@@ -321,52 +350,170 @@ void mf::ForeignToplevelHandleV1::ObserverOwner::Observer::create_toplevel_handl
                 BOOST_THROW_EXCEPTION(std::logic_error("toplevel_handle not set up by constructor"));
 
             toplevel_handle->value()->send_title_event(name);
+            toplevel_handle->value()->send_state(focused, state);
             toplevel_handle->value()->send_done_event();
         });
 }
 
 void mf::ForeignToplevelHandleV1::ObserverOwner::Observer::destroy_toplevel_handle()
 {
-    // If there already isn't a toplevel handle, we can safely return
     if (!wayland_toplevel_handle)
-        return;
+        BOOST_THROW_EXCEPTION(std::logic_error("destroy_toplevel_handle() when toplevel not created"));
 
-    auto captured_toplevel_handle = wayland_toplevel_handle.value();
-    wayland_toplevel_handle = std::experimental::nullopt;
-
-    seat.spawn(
-        [captured_toplevel_handle]()
+    aquire_toplevel_handle([](ForeignToplevelHandleV1* toplevel_handle)
         {
-            // If the toplevel handle has already been destroyed there's nothing to do'
-            if (!*captured_toplevel_handle)
-                return;
-
-            captured_toplevel_handle->value()->destroy_wayland_object();
+            toplevel_handle->destroy_wayland_object();
         });
+
+    wayland_toplevel_handle = std::experimental::nullopt;
+}
+
+void mf::ForeignToplevelHandleV1::ObserverOwner::Observer::create_or_destroy_toplevel_handle_as_needed()
+{
+    bool should_have_toplevel = true;
+
+    if (surface)
+    {
+        auto& surface_value = this->surface.value();
+
+        switch(surface_value->state())
+        {
+        case mir_window_state_attached:
+        case mir_window_state_hidden:
+            should_have_toplevel = false;
+            break;
+
+        default:
+            break;
+        }
+
+        switch (surface_value->type())
+        {
+        case mir_window_type_normal:
+        case mir_window_type_utility:
+        case mir_window_type_freestyle:
+            break;
+
+        default:
+            should_have_toplevel = false;
+            break;
+        }
+    }
+    else
+    {
+        should_have_toplevel = false;
+    }
+
+    if (should_have_toplevel && !wayland_toplevel_handle)
+    {
+        create_toplevel_handle();
+    }
+    else if (!should_have_toplevel && wayland_toplevel_handle)
+    {
+        destroy_toplevel_handle();
+    }
+}
+
+void mf::ForeignToplevelHandleV1::ObserverOwner::Observer::attrib_changed(
+    const scene::Surface*,
+    MirWindowAttrib attrib,
+    int value)
+{
+    std::lock_guard<std::mutex> lock{mutex};
+
+    auto toplevel_handel_existed_before = wayland_toplevel_handle.operator bool();
+    if (!surface)
+        return;
+    auto& surface_value = this->surface.value();
+
+    switch (attrib)
+    {
+    case mir_window_attrib_state:
+        create_or_destroy_toplevel_handle_as_needed();
+        if (toplevel_handel_existed_before)
+        {
+            auto focused = surface_value->focus_state();
+            auto state = static_cast<MirWindowState>(value);
+            aquire_toplevel_handle([focused, state](ForeignToplevelHandleV1* toplevel_handle)
+            {
+                toplevel_handle->send_state(focused, state);
+                toplevel_handle->send_done_event();
+            });
+        }
+        break;
+
+    case mir_window_attrib_focus:
+    {
+        auto focused = static_cast<MirWindowFocusState>(value);
+        auto state = surface_value->state();
+        aquire_toplevel_handle([focused, state](ForeignToplevelHandleV1* toplevel_handle)
+            {
+                toplevel_handle->send_state(focused, state);
+                toplevel_handle->send_done_event();
+            });
+        break;
+    }
+
+    case mir_window_attrib_type:
+        create_or_destroy_toplevel_handle_as_needed();
+        break;
+
+    default:
+        break;
+    }
 }
 
 void mf::ForeignToplevelHandleV1::ObserverOwner::Observer::renamed(ms::Surface const*, char const* name_c_str)
 {
     std::lock_guard<std::mutex> lock{mutex};
 
-    // If we aren't currently connected to a toplevel handle, do nothing
-    if (!wayland_toplevel_handle)
-        return;
-
     std::string name = name_c_str;
-
-    seat.spawn([toplevel_handle = wayland_toplevel_handle.value(), name]()
+    aquire_toplevel_handle([name](ForeignToplevelHandleV1* toplevel_handle)
         {
-            // If the toplevel handle has been destroyed, there's nothing to do
-            if (!*toplevel_handle)
-                return;
-
-            toplevel_handle->value()->send_title_event(name);
-            toplevel_handle->value()->send_done_event();
+            toplevel_handle->send_title_event(name);
+            toplevel_handle->send_done_event();
         });
 }
 
 // ForeignToplevelHandleV1
+
+void mf::ForeignToplevelHandleV1::send_state(MirWindowFocusState focused, MirWindowState state)
+{
+    wl_array states;
+    wl_array_init(&states);
+
+    if (focused == mir_window_focus_state_focused)
+    {
+        if (uint32_t* state = static_cast<uint32_t*>(wl_array_add(&states, sizeof(uint32_t))))
+            *state = State::activated;
+    }
+
+    switch (state)
+    {
+    case mir_window_state_maximized:
+    case mir_window_state_horizmaximized:
+    case mir_window_state_vertmaximized:
+        if (uint32_t *state = static_cast<uint32_t*>(wl_array_add(&states, sizeof(uint32_t))))
+            *state = State::maximized;
+        break;
+
+    case mir_window_state_fullscreen:
+        if (uint32_t *state = static_cast<uint32_t*>(wl_array_add(&states, sizeof(uint32_t))))
+            *state = State::fullscreen;
+        break;
+
+    case mir_window_state_minimized:
+        if (uint32_t *state = static_cast<uint32_t*>(wl_array_add(&states, sizeof(uint32_t))))
+            *state = State::minimized;
+        break;
+
+    default:
+        break;
+    }
+
+    send_state_event(&states);
+    wl_array_release(&states);
+}
 
 mf::ForeignToplevelHandleV1::ForeignToplevelHandleV1(
     ForeignToplevelManagerV1 const& manager,

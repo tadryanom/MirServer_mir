@@ -20,6 +20,7 @@
 #define MIR_FRONTEND_FOREIGN_TOPLEVEL_MANAGER_V1_H
 
 #include "wlr-foreign-toplevel-management-unstable-v1_wrapper.h"
+#include "mir_toolkit/common.h"
 
 namespace mir
 {
@@ -88,6 +89,9 @@ class ForeignToplevelHandleV1
 {
 public:
     class ObserverOwner;
+
+    /// Sends the required .state event
+    void send_state(MirWindowFocusState focused, MirWindowState state);
 
 private:
     ForeignToplevelHandleV1(
