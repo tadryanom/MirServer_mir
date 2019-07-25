@@ -93,6 +93,9 @@ public:
     /// Sends the required .state event
     void send_state(MirWindowFocusState focused, MirWindowState state);
 
+    /// Sends the .closed event and makes this surface innert
+    void has_closed();
+
 private:
     ForeignToplevelHandleV1(
         ForeignToplevelManagerV1 const& manager,
