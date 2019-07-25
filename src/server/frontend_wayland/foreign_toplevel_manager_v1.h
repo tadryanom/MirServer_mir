@@ -21,6 +21,7 @@
 
 #include "wlr-foreign-toplevel-management-unstable-v1_wrapper.h"
 #include "mir_toolkit/common.h"
+#include "mir/frontend/surface_id.h"
 
 namespace mir
 {
@@ -28,10 +29,16 @@ namespace scene
 {
 class Surface;
 }
+namespace shell
+{
+class Shell;
+class SurfaceSpecification;
+}
 namespace frontend
 {
 
 class Shell;
+class Session;
 class WlSeat;
 class OutputManager;
 
@@ -101,8 +108,13 @@ public:
 private:
     ForeignToplevelHandleV1(
         ForeignToplevelManagerV1 const& manager,
-        std::shared_ptr<std::experimental::optional<ForeignToplevelHandleV1*>> const weak_self);
+        std::weak_ptr<Session> session,
+        SurfaceId surface_id,
+        std::shared_ptr<std::experimental::optional<ForeignToplevelHandleV1*>> weak_self);
     ~ForeignToplevelHandleV1();
+
+    /// Modifies the surface if possible, silently fails if not
+    void modify_surface(shell::SurfaceSpecification const& spec);
 
     /// Wayland requests
     ///@{
@@ -122,10 +134,13 @@ private:
     /// Pointed to optional needs to be explicitly set to nullopt in the destructor
     std::shared_ptr<std::experimental::optional<ForeignToplevelHandleV1*>> const weak_self;
 
-    /// After the manager observer is destroyed, there is no way to know when surfaces are removed,
-    /// so all surfaces observers are cleared at that point. For this reason, we need to keep the
-    /// ForeignToplevelManagerV1::ObserverOwner around even after the ForeignToplevelManagerV1 has been destroyed
+    /// This is to keep the object around as long as any Wayland objects depend on it
+    /// When the observer owner is destroyed is disconnects the scene observer and destroyes all surface observers
     std::shared_ptr<ForeignToplevelManagerV1::ObserverOwner> const manager_observer_owner;
+
+    std::weak_ptr<Shell> const shell;
+    std::weak_ptr<Session> const session;
+    std::experimental::optional<SurfaceId const> surface_id;
 };
 }
 }

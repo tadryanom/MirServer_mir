@@ -18,13 +18,14 @@
 
 #include "foreign_toplevel_manager_v1.h"
 
-#include "window_wl_surface_role.h"
+#include "wayland_utils.h"
 #include "wl_seat.h"
 #include "mir/frontend/shell.h"
 #include "mir/shell/surface_specification.h"
 #include "mir/scene/null_observer.h"
 #include "mir/scene/null_surface_observer.h"
 #include "mir/scene/surface.h"
+#include "mir/scene/session.h"
 #include "mir/log.h"
 
 #include <algorithm>
@@ -53,12 +54,13 @@ public:
     ObserverOwner(ObserverOwner const&) = delete;
     ObserverOwner& operator=(ObserverOwner const&) = delete;
 
-    /// This should be run in the body of ForeignToplevelManagerV1::ForeignToplevelManagerV1()
-    /// Running it in the constructor of this object causes initialization order issues
-    void start();
+    /// Called immediately after constructor
+    /// Used because of initialization order issues
+    void initialize();
+
+    std::shared_ptr<Shell> const shell;
 
 private:
-    std::shared_ptr<Shell> const shell;
     std::shared_ptr<Observer> const observer;
 };
 
@@ -112,12 +114,13 @@ class ForeignToplevelHandleV1::Observer
 public:
     Observer(
         WlSeat& seat,
-        std::shared_ptr<std::experimental::optional<ForeignToplevelManagerV1*>> const wayland_toplevel_manager,
+        std::shared_ptr<std::experimental::optional<ForeignToplevelManagerV1*>> wayland_toplevel_manager,
         scene::Surface* surface);
     ~Observer();
     Observer(Observer const&) = delete;
     Observer& operator=(Observer const&) = delete;
 
+    /// Sets the surface to nullopt and closes the toplevel handle
     void invalidate_surface();
 
 private:
@@ -135,6 +138,7 @@ private:
     void attrib_changed(scene::Surface const*, MirWindowAttrib attrib, int value) override;
     void renamed(scene::Surface const*, char const* name) override;
     void application_id_set_to(scene::Surface const*, std::string const& application_id) override;
+    void session_set_to(scene::Surface const*, std::weak_ptr<scene::Session> const& session) override;
     ///@}
 
     WlSeat& seat; ///< Used to spawn functions on the Wayland thread
@@ -180,7 +184,7 @@ mf::ForeignToplevelManagerV1::ForeignToplevelManagerV1(
       weak_self{std::make_shared<std::experimental::optional<ForeignToplevelManagerV1*>>(this)},
       observer{std::make_shared<ObserverOwner>(global.shell, global.seat, weak_self)}
 {
-    observer->start();
+    observer->initialize();
 }
 
 mf::ForeignToplevelManagerV1::~ForeignToplevelManagerV1()
@@ -215,7 +219,7 @@ mf::ForeignToplevelManagerV1::ObserverOwner::~ObserverOwner()
     shell->remove_observer(observer);
 }
 
-void mf::ForeignToplevelManagerV1::ObserverOwner::start()
+void mf::ForeignToplevelManagerV1::ObserverOwner::initialize()
 {
     shell->add_observer(observer);
 }
@@ -331,16 +335,23 @@ void mf::ForeignToplevelHandleV1::Observer::create_toplevel_handle()
 
     wayland_toplevel_handle =
         std::make_shared<std::experimental::optional<ForeignToplevelHandleV1*>>(std::experimental::nullopt);
+    auto session = surface.value()->session();
+    auto session_shared = session.lock();
+    if (!session_shared)
+        BOOST_THROW_EXCEPTION(std::logic_error("create_toplevel_handle() when surface was not attached to a session"));
+    auto surface_id = session_shared->get_surface_id(surface.value());
     std::string name = surface.value()->name();
-    std::string id = surface.value()->application_id();
+    std::string app_id = surface.value()->application_id();
     auto focused = surface.value()->focus_state();
     auto state = surface.value()->state();
 
     seat.spawn(
         [toplevel_manager = wayland_toplevel_manager,
          toplevel_handle = wayland_toplevel_handle.value(),
+         session,
+         surface_id,
          name,
-         id,
+         app_id,
          focused,
          state]()
         {
@@ -348,14 +359,14 @@ void mf::ForeignToplevelHandleV1::Observer::create_toplevel_handle()
             if (!*toplevel_manager)
                 return;
 
-            new ForeignToplevelHandleV1{*toplevel_manager->value(), toplevel_handle};
+            new ForeignToplevelHandleV1{*toplevel_manager->value(), session, surface_id, toplevel_handle};
             if (!*toplevel_handle)
                 BOOST_THROW_EXCEPTION(std::logic_error("toplevel_handle not set up by constructor"));
 
             if (!name.empty())
                 toplevel_handle->value()->send_title_event(name);
-            if (!id.empty())
-                toplevel_handle->value()->send_app_id_event(id);
+            if (!app_id.empty())
+                toplevel_handle->value()->send_app_id_event(app_id);
             toplevel_handle->value()->send_state(focused, state);
             toplevel_handle->value()->send_done_event();
         });
@@ -404,6 +415,9 @@ void mf::ForeignToplevelHandleV1::Observer::create_or_close_toplevel_handle_as_n
             should_have_toplevel = false;
             break;
         }
+
+        if (!surface_value->session().lock())
+            should_have_toplevel = false;
     }
     else
     {
@@ -494,6 +508,14 @@ void mf::ForeignToplevelHandleV1::Observer::application_id_set_to(
         });
 }
 
+void mf::ForeignToplevelHandleV1::Observer::session_set_to(
+    scene::Surface const*,
+    std::weak_ptr<scene::Session> const& /*session*/)
+{
+    std::lock_guard<std::mutex> lock{mutex};
+    create_or_close_toplevel_handle_as_needed();
+}
+
 // ForeignToplevelHandleV1
 
 void mf::ForeignToplevelHandleV1::send_state(MirWindowFocusState focused, MirWindowState state)
@@ -538,15 +560,20 @@ void mf::ForeignToplevelHandleV1::has_closed()
 {
     send_closed_event();
     *weak_self = std::experimental::nullopt;
-    // TODO: disconnect the surface to requests do nothing
+    surface_id = std::experimental::nullopt;
 }
 
 mf::ForeignToplevelHandleV1::ForeignToplevelHandleV1(
     ForeignToplevelManagerV1 const& manager,
-    std::shared_ptr<std::experimental::optional<ForeignToplevelHandleV1*>> const weak_self)
-    : mw::ForeignToplevelHandleV1(manager),
+    std::weak_ptr<Session> session,
+    SurfaceId surface_id,
+    std::shared_ptr<std::experimental::optional<ForeignToplevelHandleV1*>> weak_self)
+    : mw::ForeignToplevelHandleV1{manager},
       weak_self{weak_self},
-      manager_observer_owner{manager.observer_owner()}
+      manager_observer_owner{manager.observer_owner()},
+      shell{manager_observer_owner->shell},
+      session{session},
+      surface_id{surface_id}
 {
     *weak_self = this;
     manager.send_toplevel_event(resource);
@@ -557,16 +584,31 @@ mf::ForeignToplevelHandleV1::~ForeignToplevelHandleV1()
     *weak_self = std::experimental::nullopt;
 }
 
+void mf::ForeignToplevelHandleV1::modify_surface(shell::SurfaceSpecification const& spec)
+{
+    if (!surface_id)
+        return;
+    auto shell = this->shell.lock();
+    if (!shell)
+        return;
+    auto session = this->session.lock();
+    if (!session)
+        return;
+    shell->modify_surface(session, surface_id.value(), spec);
+}
+
 void mf::ForeignToplevelHandleV1::set_maximized()
 {
-    log_warning("zwlr_foreign_toplevel_handle_v1.set_maximized not implemented");
-    // TODO
+    shell::SurfaceSpecification spec;
+    spec.state = mir_window_state_maximized;
+    modify_surface(spec);
 }
 
 void mf::ForeignToplevelHandleV1::unset_maximized()
 {
-    log_warning("zwlr_foreign_toplevel_handle_v1.unset_maximized not implemented");
-    // TODO
+    shell::SurfaceSpecification spec;
+    spec.state = mir_window_state_restored;
+    modify_surface(spec);
 }
 
 void mf::ForeignToplevelHandleV1::set_minimized()
