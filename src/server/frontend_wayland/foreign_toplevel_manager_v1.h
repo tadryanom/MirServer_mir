@@ -62,6 +62,7 @@ class ForeignToplevelManagerV1
 {
 public:
     class ObserverOwner;
+    class Observer;
 
     ForeignToplevelManagerV1(wl_resource* new_resource, ForeignToplevelManagerV1Global& global);
     ~ForeignToplevelManagerV1();
@@ -89,6 +90,7 @@ class ForeignToplevelHandleV1
 {
 public:
     class ObserverOwner;
+    class Observer;
 
     /// Sends the required .state event
     void send_state(MirWindowFocusState focused, MirWindowState state);

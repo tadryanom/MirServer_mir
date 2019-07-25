@@ -58,35 +58,35 @@ public:
     void start();
 
 private:
-    class Observer
-        : public ms::NullObserver
-    {
-    public:
-        Observer(
-            WlSeat& seat,
-            std::shared_ptr<std::experimental::optional<ForeignToplevelManagerV1*>> wayland_toplevel_manager);
-        ~Observer();
-        Observer(Observer const&) = delete;
-        Observer& operator=(Observer const&) = delete;
-
-    private:
-        /// Shell observer
-        ///@{
-        void surface_added(scene::Surface* surface) override;
-        void surface_removed(scene::Surface* surface) override;
-        void surface_exists(scene::Surface* surface) override;
-        void end_observation() override;
-        ///@}
-
-        WlSeat& seat; ///< Used to spawn functions on the Wayland thread
-        std::map<scene::Surface*, std::unique_ptr<ForeignToplevelHandleV1::ObserverOwner>> surface_observers;
-        /// Can only be safely accessed on the Wayland thread
-        std::shared_ptr<std::experimental::optional<ForeignToplevelManagerV1*>> wayland_toplevel_manager;
-        std::mutex mutex;
-    };
-
     std::shared_ptr<Shell> const shell;
     std::shared_ptr<Observer> const observer;
+};
+
+class ForeignToplevelManagerV1::Observer
+    : public ms::NullObserver
+{
+public:
+    Observer(
+        WlSeat& seat,
+        std::shared_ptr<std::experimental::optional<ForeignToplevelManagerV1*>> wayland_toplevel_manager);
+    ~Observer();
+    Observer(Observer const&) = delete;
+    Observer& operator=(Observer const&) = delete;
+
+private:
+    /// Shell observer
+    ///@{
+    void surface_added(scene::Surface* surface) override;
+    void surface_removed(scene::Surface* surface) override;
+    void surface_exists(scene::Surface* surface) override;
+    void end_observation() override;
+    ///@}
+
+    WlSeat& seat; ///< Used to spawn functions on the Wayland thread
+    std::map<scene::Surface*, std::unique_ptr<ForeignToplevelHandleV1::ObserverOwner>> surface_observers;
+    /// Can only be safely accessed on the Wayland thread
+    std::shared_ptr<std::experimental::optional<ForeignToplevelManagerV1*>> wayland_toplevel_manager;
+    std::mutex mutex;
 };
 
 /// Holds a surface observer
@@ -102,52 +102,52 @@ public:
     ObserverOwner& operator=(ObserverOwner const&) = delete;
 
 private:
-    class Observer
-        : public scene::NullSurfaceObserver
-    {
-    public:
-        Observer(
-            WlSeat& seat,
-            std::shared_ptr<std::experimental::optional<ForeignToplevelManagerV1*>> const wayland_toplevel_manager,
-            scene::Surface* surface);
-        ~Observer();
-        Observer(Observer const&) = delete;
-        Observer& operator=(Observer const&) = delete;
-
-        void invalidate_surface();
-
-    private:
-        /// Expects calling function to manage mutex locking
-        /// func is called on the Wayland thread
-        /// func is not called and no error is raised if we don't currently have a toplevel
-        /// func is not called and no error is raised if the Wayland object is destroyed
-        void aquire_toplevel_handle(std::function<void(ForeignToplevelHandleV1*)> func);
-        void create_toplevel_handle(); ///< Expects calling function to manage mutex locking
-        void close_toplevel_handle(); ///< Expects calling function to manage mutex locking
-        void create_or_close_toplevel_handle_as_needed(); ///< Expects calling function to manage mutex locking
-
-        /// Surface observer
-        ///@{
-        void attrib_changed(scene::Surface const*, MirWindowAttrib attrib, int value) override;
-        void renamed(scene::Surface const*, char const* name) override;
-        void application_id_set_to(scene::Surface const*, std::string const& application_id) override;
-        ///@}
-
-        WlSeat& seat; ///< Used to spawn functions on the Wayland thread
-        /// Initialized with a value. Set to nullopt in invalidate_surface() when the surface is removed from the shell
-        std::experimental::optional<scene::Surface* const> surface;
-        /// Can only be safely accessed on the Wayland thread
-        std::shared_ptr<std::experimental::optional<ForeignToplevelManagerV1*>> const wayland_toplevel_manager;
-        /// Inner optional can only be safely accessed on the Wayland thread
-        /// nullopt means there is no wayland toplevel handle (perhaps this surface is a popup or something)
-        /// A pointer to nullopt means we created a wayland object, but it has been deleted
-        std::experimental::optional<
-            std::shared_ptr<std::experimental::optional<ForeignToplevelHandleV1*>>> wayland_toplevel_handle;
-        std::mutex mutex;
-    };
-
     scene::Surface* const surface; ///< Used to add and remove the observer
     std::shared_ptr<Observer> const observer;
+};
+
+class ForeignToplevelHandleV1::Observer
+    : public scene::NullSurfaceObserver
+{
+public:
+    Observer(
+        WlSeat& seat,
+        std::shared_ptr<std::experimental::optional<ForeignToplevelManagerV1*>> const wayland_toplevel_manager,
+        scene::Surface* surface);
+    ~Observer();
+    Observer(Observer const&) = delete;
+    Observer& operator=(Observer const&) = delete;
+
+    void invalidate_surface();
+
+private:
+    /// Expects calling function to manage mutex locking
+    /// func is called on the Wayland thread
+    /// func is not called and no error is raised if we don't currently have a toplevel
+    /// func is not called and no error is raised if the Wayland object is destroyed
+    void aquire_toplevel_handle(std::function<void(ForeignToplevelHandleV1*)> func);
+    void create_toplevel_handle(); ///< Expects calling function to manage mutex locking
+    void close_toplevel_handle(); ///< Expects calling function to manage mutex locking
+    void create_or_close_toplevel_handle_as_needed(); ///< Expects calling function to manage mutex locking
+
+    /// Surface observer
+    ///@{
+    void attrib_changed(scene::Surface const*, MirWindowAttrib attrib, int value) override;
+    void renamed(scene::Surface const*, char const* name) override;
+    void application_id_set_to(scene::Surface const*, std::string const& application_id) override;
+    ///@}
+
+    WlSeat& seat; ///< Used to spawn functions on the Wayland thread
+    /// Initialized with a value. Set to nullopt in invalidate_surface() when the surface is removed from the shell
+    std::experimental::optional<scene::Surface* const> surface;
+    /// Can only be safely accessed on the Wayland thread
+    std::shared_ptr<std::experimental::optional<ForeignToplevelManagerV1*>> const wayland_toplevel_manager;
+    /// Inner optional can only be safely accessed on the Wayland thread
+    /// nullopt means there is no wayland toplevel handle (perhaps this surface is a popup or something)
+    /// A pointer to nullopt means we created a wayland object, but it has been deleted
+    std::experimental::optional<
+        std::shared_ptr<std::experimental::optional<ForeignToplevelHandleV1*>>> wayland_toplevel_handle;
+    std::mutex mutex;
 };
 }
 }
@@ -220,9 +220,9 @@ void mf::ForeignToplevelManagerV1::ObserverOwner::start()
     shell->add_observer(observer);
 }
 
-// ForeignToplevelManagerV1::ObserverOwner::Observer
+// ForeignToplevelManagerV1::Observer
 
-mf::ForeignToplevelManagerV1::ObserverOwner::Observer::Observer(
+mf::ForeignToplevelManagerV1::Observer::Observer(
     WlSeat& seat,
     std::shared_ptr<std::experimental::optional<ForeignToplevelManagerV1*>> wayland_toplevel_manager)
     : seat{seat},
@@ -230,31 +230,31 @@ mf::ForeignToplevelManagerV1::ObserverOwner::Observer::Observer(
 {
 }
 
-mf::ForeignToplevelManagerV1::ObserverOwner::Observer::~Observer()
+mf::ForeignToplevelManagerV1::Observer::~Observer()
 {
 }
 
-void mf::ForeignToplevelManagerV1::ObserverOwner::Observer::surface_added(ms::Surface* surface)
+void mf::ForeignToplevelManagerV1::Observer::surface_added(ms::Surface* surface)
 {
     std::lock_guard<std::mutex> lock{mutex};
     auto observer = std::make_unique<ForeignToplevelHandleV1::ObserverOwner>(seat, wayland_toplevel_manager, surface);
     surface_observers[surface] = move(observer);
 }
 
-void mf::ForeignToplevelManagerV1::ObserverOwner::Observer::surface_removed(ms::Surface* surface)
+void mf::ForeignToplevelManagerV1::Observer::surface_removed(ms::Surface* surface)
 {
     std::lock_guard<std::mutex> lock{mutex};
     surface_observers.erase(surface);
 }
 
-void mf::ForeignToplevelManagerV1::ObserverOwner::Observer::surface_exists(ms::Surface* surface)
+void mf::ForeignToplevelManagerV1::Observer::surface_exists(ms::Surface* surface)
 {
     std::lock_guard<std::mutex> lock{mutex};
     auto observer = std::make_unique<ForeignToplevelHandleV1::ObserverOwner>(seat, wayland_toplevel_manager, surface);
     surface_observers[surface] = move(observer);
 }
 
-void mf::ForeignToplevelManagerV1::ObserverOwner::Observer::end_observation()
+void mf::ForeignToplevelManagerV1::Observer::end_observation()
 {
     std::lock_guard<std::mutex> lock{mutex};
     surface_observers.clear();
@@ -278,9 +278,9 @@ mf::ForeignToplevelHandleV1::ObserverOwner::~ObserverOwner()
     surface->remove_observer(observer);
 }
 
-// ForeignToplevelHandleV1::ObserverOwner::Observer
+// ForeignToplevelHandleV1::Observer
 
-mf::ForeignToplevelHandleV1::ObserverOwner::Observer::Observer(
+mf::ForeignToplevelHandleV1::Observer::Observer(
     WlSeat& seat,
     std::shared_ptr<std::experimental::optional<ForeignToplevelManagerV1*>> const wayland_toplevel_manager,
     scene::Surface* surface)
@@ -291,20 +291,19 @@ mf::ForeignToplevelHandleV1::ObserverOwner::Observer::Observer(
     create_or_close_toplevel_handle_as_needed();
 }
 
-mf::ForeignToplevelHandleV1::ObserverOwner::Observer::~Observer()
+mf::ForeignToplevelHandleV1::Observer::~Observer()
 {
-    if (wayland_toplevel_handle)
-        close_toplevel_handle();
+    invalidate_surface();
 }
 
-void mf::ForeignToplevelHandleV1::ObserverOwner::Observer::invalidate_surface()
+void mf::ForeignToplevelHandleV1::Observer::invalidate_surface()
 {
     std::lock_guard<std::mutex> lock{mutex};
     surface = std::experimental::nullopt;
     create_or_close_toplevel_handle_as_needed();
 }
 
-void mf::ForeignToplevelHandleV1::ObserverOwner::Observer::aquire_toplevel_handle(
+void mf::ForeignToplevelHandleV1::Observer::aquire_toplevel_handle(
     std::function<void(ForeignToplevelHandleV1*)> func)
 {
     /// It is documented that func is not called if there is no toplevel handle
@@ -322,7 +321,7 @@ void mf::ForeignToplevelHandleV1::ObserverOwner::Observer::aquire_toplevel_handl
         });
 }
 
-void mf::ForeignToplevelHandleV1::ObserverOwner::Observer::create_toplevel_handle()
+void mf::ForeignToplevelHandleV1::Observer::create_toplevel_handle()
 {
     if (wayland_toplevel_handle)
         BOOST_THROW_EXCEPTION(std::logic_error("create_toplevel_handle() when toplevel already created"));
@@ -362,7 +361,7 @@ void mf::ForeignToplevelHandleV1::ObserverOwner::Observer::create_toplevel_handl
         });
 }
 
-void mf::ForeignToplevelHandleV1::ObserverOwner::Observer::close_toplevel_handle()
+void mf::ForeignToplevelHandleV1::Observer::close_toplevel_handle()
 {
     if (!wayland_toplevel_handle)
         BOOST_THROW_EXCEPTION(std::logic_error("destroy_toplevel_handle() when toplevel not created"));
@@ -375,7 +374,7 @@ void mf::ForeignToplevelHandleV1::ObserverOwner::Observer::close_toplevel_handle
     wayland_toplevel_handle = std::experimental::nullopt;
 }
 
-void mf::ForeignToplevelHandleV1::ObserverOwner::Observer::create_or_close_toplevel_handle_as_needed()
+void mf::ForeignToplevelHandleV1::Observer::create_or_close_toplevel_handle_as_needed()
 {
     bool should_have_toplevel = true;
 
@@ -421,7 +420,7 @@ void mf::ForeignToplevelHandleV1::ObserverOwner::Observer::create_or_close_tople
     }
 }
 
-void mf::ForeignToplevelHandleV1::ObserverOwner::Observer::attrib_changed(
+void mf::ForeignToplevelHandleV1::Observer::attrib_changed(
     const scene::Surface*,
     MirWindowAttrib attrib,
     int value)
@@ -470,7 +469,7 @@ void mf::ForeignToplevelHandleV1::ObserverOwner::Observer::attrib_changed(
     }
 }
 
-void mf::ForeignToplevelHandleV1::ObserverOwner::Observer::renamed(ms::Surface const*, char const* name_c_str)
+void mf::ForeignToplevelHandleV1::Observer::renamed(ms::Surface const*, char const* name_c_str)
 {
     std::lock_guard<std::mutex> lock{mutex};
 
@@ -482,7 +481,7 @@ void mf::ForeignToplevelHandleV1::ObserverOwner::Observer::renamed(ms::Surface c
         });
 }
 
-void mf::ForeignToplevelHandleV1::ObserverOwner::Observer::application_id_set_to(
+void mf::ForeignToplevelHandleV1::Observer::application_id_set_to(
     scene::Surface const*, std::string const& application_id)
 {
     std::lock_guard<std::mutex> lock{mutex};
