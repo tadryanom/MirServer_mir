@@ -520,6 +520,24 @@ void mf::ForeignToplevelHandleV1::Observer::session_set_to(
 
 void mf::ForeignToplevelHandleV1::send_state(MirWindowFocusState focused, MirWindowState state)
 {
+    switch (state)
+    {
+    case mir_window_state_restored:
+    case mir_window_state_maximized:
+    case mir_window_state_horizmaximized:
+    case mir_window_state_vertmaximized:
+        cached_normal_state = state;
+        cached_fullscreen = false;
+        break;
+
+    case mir_window_state_fullscreen:
+        cached_fullscreen = true;
+        break;
+
+    default:
+        break;
+    }
+
     wl_array states;
     wl_array_init(&states);
 
@@ -599,40 +617,72 @@ void mf::ForeignToplevelHandleV1::modify_surface(shell::SurfaceSpecification con
 
 void mf::ForeignToplevelHandleV1::set_maximized()
 {
-    shell::SurfaceSpecification spec;
-    spec.state = mir_window_state_maximized;
-    modify_surface(spec);
+    if (cached_fullscreen)
+    {
+        cached_normal_state = mir_window_state_maximized;
+    }
+    else
+    {
+        shell::SurfaceSpecification spec;
+        spec.state = mir_window_state_maximized;
+        modify_surface(spec);
+    }
 }
 
 void mf::ForeignToplevelHandleV1::unset_maximized()
 {
-    shell::SurfaceSpecification spec;
-    spec.state = mir_window_state_restored;
-    modify_surface(spec);
+    if (cached_fullscreen)
+    {
+        cached_normal_state = mir_window_state_restored;
+    }
+    else
+    {
+        shell::SurfaceSpecification spec;
+        spec.state = mir_window_state_restored;
+        modify_surface(spec);
+    }
 }
 
 void mf::ForeignToplevelHandleV1::set_minimized()
 {
-    log_warning("zwlr_foreign_toplevel_handle_v1.set_minimized not implemented");
-    // TODO
+    shell::SurfaceSpecification spec;
+    spec.state = mir_window_state_minimized;
+    modify_surface(spec);
 }
 
 void mf::ForeignToplevelHandleV1::unset_minimized()
 {
-    log_warning("zwlr_foreign_toplevel_handle_v1.unset_minimized not implemented");
-    // TODO
+    shell::SurfaceSpecification spec;
+    spec.state = cached_normal_state;
+    modify_surface(spec);
+    activate(nullptr);
 }
 
 void mf::ForeignToplevelHandleV1::activate(struct wl_resource* /*seat*/)
 {
-    log_warning("zwlr_foreign_toplevel_handle_v1.activate not implemented");
-    // TODO
+    if (!surface_id)
+        return;
+    auto shell = this->shell.lock();
+    if (!shell)
+        return;
+    auto session = this->session.lock();
+    if (!session)
+        return;
+    auto timestamp = std::numeric_limits<uint64_t>::max();
+    shell->request_operation(session, surface_id.value(), timestamp, Shell::UserRequest::activate);
 }
 
 void mf::ForeignToplevelHandleV1::close()
 {
-    log_warning("zwlr_foreign_toplevel_handle_v1.close not implemented");
-    // TODO
+    if (!surface_id)
+        return;
+    auto session = this->session.lock();
+    if (!session)
+        return;
+    auto frontend_surface = session->get_surface(surface_id.value());
+    auto surface = std::dynamic_pointer_cast<ms::Surface>(frontend_surface);
+    if (surface)
+        surface->request_client_surface_close();
 }
 
 void mf::ForeignToplevelHandleV1::set_rectangle(
@@ -642,24 +692,25 @@ void mf::ForeignToplevelHandleV1::set_rectangle(
     int32_t /*width*/,
     int32_t /*height*/)
 {
-    log_warning("zwlr_foreign_toplevel_handle_v1.set_rectangle not implemented");
-    // TODO
+    // This would be used for the destination of a window minimization animation
+    // Nothing must be done with this info. It is not a protocol violation to ignore it
 }
 
 void mf::ForeignToplevelHandleV1::destroy()
 {
-    log_warning("zwlr_foreign_toplevel_handle_v1.destroy not implemented");
-    // TODO
+    destroy_wayland_object();
 }
 
 void mf::ForeignToplevelHandleV1::set_fullscreen(std::experimental::optional<struct wl_resource*> const& /*output*/)
 {
-    log_warning("zwlr_foreign_toplevel_handle_v1.set_fullscreen not implemented");
-    // TODO
+    shell::SurfaceSpecification spec;
+    spec.state = mir_window_state_fullscreen;
+    modify_surface(spec);
 }
 
 void mf::ForeignToplevelHandleV1::unset_fullscreen()
 {
-    log_warning("zwlr_foreign_toplevel_handle_v1.unset_fullscreen not implemented");
-    // TODO
+    shell::SurfaceSpecification spec;
+    spec.state = cached_normal_state;
+    modify_surface(spec);
 }

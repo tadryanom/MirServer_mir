@@ -141,6 +141,12 @@ private:
     std::weak_ptr<Shell> const shell;
     std::weak_ptr<Session> const session;
     std::experimental::optional<SurfaceId const> surface_id;
+
+    /// Used to choose the state to unminimize/unfullscreen to
+    ///@{
+    MirWindowState cached_normal_state{mir_window_state_restored}; ///< always either restored or a maximized state
+    bool cached_fullscreen{false};
+    ///@}
 };
 }
 }
