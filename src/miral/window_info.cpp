@@ -166,6 +166,9 @@ miral::WindowInfo& miral::WindowInfo::operator=(WindowInfo const& that)
 
 bool miral::WindowInfo::can_be_active() const
 {
+    if (state() == mir_window_state_attached)
+        return false;
+
     switch (type())
     {
     case mir_window_type_normal:       /**< AKA "regular"                       */
