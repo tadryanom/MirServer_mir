@@ -396,7 +396,6 @@ void mf::ForeignToplevelHandleV1::Observer::create_or_close_toplevel_handle_as_n
         switch(surface_value->state())
         {
         case mir_window_state_attached:
-        case mir_window_state_hidden:
             should_have_toplevel = false;
             break;
 
@@ -415,6 +414,10 @@ void mf::ForeignToplevelHandleV1::Observer::create_or_close_toplevel_handle_as_n
             should_have_toplevel = false;
             break;
         }
+
+        // parent does not change after construction so we do not observe it
+        if (surface_value->parent())
+            should_have_toplevel = false;
 
         if (!surface_value->session().lock())
             should_have_toplevel = false;
