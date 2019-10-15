@@ -151,15 +151,19 @@ void mf::WaylandSurfaceObserver::input_consumed(ms::Surface const*, MirEvent con
     run_on_wayland_thread_unless_destroyed(
         [this, owned_event]()
         {
-            if (mir_event_get_type(owned_event.get()) != mir_event_type_input)
+            switch (mir_event_get_type(owned_event.get()))
             {
+            case mir_event_type_input:
+                handle_input_event(mir_event_get_input_event(owned_event.get()));
+                break;
+            case mir_event_type_input_device_state:
+                handle_input_device_state_event(mir_event_get_input_device_state_event(owned_event.get()));
+                break;
+            default:
                 log_warning(
                     "WaylandSurfaceObserver::input_consumed() got non-input event type %d",
                     mir_event_get_type(owned_event.get()));
-                return;
             }
-            auto const input_ev = mir_event_get_input_event(owned_event.get());
-            handle_input_event(input_ev);
         });
 }
 
@@ -190,6 +194,31 @@ void mf::WaylandSurfaceObserver::handle_input_event(MirInputEvent const* event)
         break;
     default:
         break;
+    }
+}
+
+void mf::WaylandSurfaceObserver::handle_input_device_state_event(MirInputDeviceStateEvent const* event)
+{
+    auto const ns = std::chrono::nanoseconds{mir_input_device_state_event_time(event)};
+    auto const ms = std::chrono::duration_cast<std::chrono::milliseconds>(ns);
+
+    geom::Point const position{
+        mir_input_device_state_event_pointer_axis(event, mir_pointer_axis_x),
+        mir_input_device_state_event_pointer_axis(event, mir_pointer_axis_y)};
+    bool const send_motion = (!last_pointer_position || position != last_pointer_position.value());
+
+    last_pointer_position = position;
+
+    if (send_motion)
+    {
+        seat->for_each_listener(
+            client,
+            [&ms, surface = surface, &position](WlPointer* pointer)
+            {
+                mir_input_device_state_event_pointer_buttons();
+                pointer->motion(ms, surface, position);
+                pointer->frame();
+            });
     }
 }
 
