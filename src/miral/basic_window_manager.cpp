@@ -547,7 +547,17 @@ void miral::BasicWindowManager::force_close(Window const& window)
 
 auto miral::BasicWindowManager::active_window() const -> Window
 {
-    return mru_active_windows.top();
+    auto const focused_surface = focus_controller->focused_surface();
+
+    try
+    {
+        return (focused_surface ? info_for(focused_surface).window() : Window{});
+    }
+    catch (std::out_of_range const& ex)
+    {
+        // This window is removed, but focus controller doesn't know about it. Return a null window.
+        return Window{};
+    }
 }
 
 void miral::BasicWindowManager::focus_next_application()
