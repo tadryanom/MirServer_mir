@@ -547,17 +547,7 @@ void miral::BasicWindowManager::force_close(Window const& window)
 
 auto miral::BasicWindowManager::active_window() const -> Window
 {
-    auto const focused_surface = focus_controller->focused_surface();
-
-    try
-    {
-        return (focused_surface ? info_for(focused_surface).window() : Window{});
-    }
-    catch (std::out_of_range const& ex)
-    {
-        // This window is removed, but focus controller doesn't know about it. Return a null window.
-        return Window{};
-    }
+    return allow_active_window ? mru_active_windows.top() : Window{};
 }
 
 void miral::BasicWindowManager::focus_next_application()
@@ -1542,6 +1532,9 @@ void miral::BasicWindowManager::invoke_under_lock(std::function<void()> const& c
 auto miral::BasicWindowManager::select_active_window(Window const& hint) -> miral::Window
 {
     auto const prev_window = active_window();
+
+    // Lomiri "selects" a null Window to implicitly disable the active window
+    allow_active_window = hint;
 
     if (!hint)
     {
