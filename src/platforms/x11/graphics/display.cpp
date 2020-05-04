@@ -69,9 +69,10 @@ geom::Size clip_to_display(Display *dpy, geom::Size requested_size)
         mir::log_info(" ... is smaller than the requested size (%dx%d) plus border (%d). Clipping to (%dx%d).",
                       requested_size.width.as_uint32_t(), requested_size.height.as_uint32_t(), border,
                       width.as_uint32_t(), height.as_uint32_t());
+        mir::log_info("Actually never mind, returning requested size");
     }
 
-    return result;
+    return requested_size;
 }
 
 auto get_pixel_width(Display *dpy)
