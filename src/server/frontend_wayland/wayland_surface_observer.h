@@ -21,6 +21,7 @@
 #define MIR_FRONTEND_WAYLAND_SURFACE_OBSERVER_H_
 
 #include "mir/scene/null_surface_observer.h"
+#include "mir/wayland/wayland_base.h"
 
 #include <memory>
 #include <experimental/optional>
@@ -39,7 +40,8 @@ class WindowWlSurfaceRole;
 class WaylandInputDispatcher;
 
 class WaylandSurfaceObserver
-    : public scene::NullSurfaceObserver
+    : public scene::NullSurfaceObserver,
+      public virtual wayland::LifetimeTracker
 {
 public:
     WaylandSurfaceObserver(WlSeat* seat, WlSurface* surface, WindowWlSurfaceRole* window);
@@ -78,19 +80,16 @@ public:
         return current_state;
     }
 
-    void disconnect() { *destroyed = true; }
-
 private:
     WlSeat* const seat; // only used by run_on_wayland_thread_unless_destroyed()
-    WindowWlSurfaceRole* const window;
+    wayland::Weak<WindowWlSurfaceRole> const window;
     std::unique_ptr<WaylandInputDispatcher> const input_dispatcher;
 
     geometry::Size window_size;
     std::experimental::optional<geometry::Size> requested_size;
     MirWindowState current_state{mir_window_state_unknown};
-    std::shared_ptr<bool> const destroyed;
 
-    void run_on_wayland_thread_unless_destroyed(std::function<void()>&& work);
+    void run_on_wayland_thread_unless_destroyed(std::function<void(WindowWlSurfaceRole*)>&& work);
 };
 }
 }
