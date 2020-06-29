@@ -33,6 +33,7 @@ namespace ms = mir::scene;
 namespace geom = mir::geometry;
 namespace mev = mir::events;
 namespace mi = mir::input;
+namespace mw = mir::wayland;
 
 mf::WaylandSurfaceObserver::WaylandSurfaceObserver(
     WlSeat* seat,
@@ -41,14 +42,12 @@ mf::WaylandSurfaceObserver::WaylandSurfaceObserver(
     : seat{seat},
       window{window},
       input_dispatcher{std::make_unique<WaylandInputDispatcher>(seat, surface)},
-      window_size{geometry::Size{0,0}},
-      destroyed{std::make_shared<bool>(false)}
+      window_size{geometry::Size{0,0}}
 {
 }
 
 mf::WaylandSurfaceObserver::~WaylandSurfaceObserver()
 {
-    *destroyed = true;
 }
 
 void mf::WaylandSurfaceObserver::attrib_changed(ms::Surface const*, MirWindowAttrib attrib, int value)
@@ -56,7 +55,7 @@ void mf::WaylandSurfaceObserver::attrib_changed(ms::Surface const*, MirWindowAtt
     switch (attrib)
     {
     case mir_window_attrib_focus:
-        run_on_wayland_thread_unless_destroyed([this, value]()
+        run_on_wayland_thread_unless_destroyed([this, value](auto window)
             {
                 auto has_focus = static_cast<bool>(value);
                 input_dispatcher->set_focus(has_focus);
@@ -65,7 +64,7 @@ void mf::WaylandSurfaceObserver::attrib_changed(ms::Surface const*, MirWindowAtt
         break;
 
     case mir_window_attrib_state:
-        run_on_wayland_thread_unless_destroyed([this, value]()
+        run_on_wayland_thread_unless_destroyed([this, value](auto window)
             {
                 current_state = static_cast<MirWindowState>(value);
                 window->handle_state_change(current_state);
@@ -79,7 +78,7 @@ void mf::WaylandSurfaceObserver::attrib_changed(ms::Surface const*, MirWindowAtt
 void mf::WaylandSurfaceObserver::content_resized_to(ms::Surface const*, geom::Size const& content_size)
 {
     run_on_wayland_thread_unless_destroyed(
-        [this, content_size]()
+        [this, content_size](auto window)
         {
             if (content_size != window_size)
             {
@@ -92,7 +91,7 @@ void mf::WaylandSurfaceObserver::content_resized_to(ms::Surface const*, geom::Si
 void mf::WaylandSurfaceObserver::client_surface_close_requested(ms::Surface const*)
 {
     run_on_wayland_thread_unless_destroyed(
-        [this]()
+        [this](auto window)
         {
             window->handle_close_request();
         });
@@ -110,7 +109,7 @@ void mf::WaylandSurfaceObserver::keymap_changed(
     auto const keymap = std::make_shared<mi::Keymap>(model, layout, variant, options);
 
     run_on_wayland_thread_unless_destroyed(
-        [this, keymap]()
+        [this, keymap](auto)
         {
             input_dispatcher->set_keymap(*keymap);
         });
@@ -119,7 +118,7 @@ void mf::WaylandSurfaceObserver::keymap_changed(
 void mf::WaylandSurfaceObserver::placed_relative(ms::Surface const*, geometry::Rectangle const& placement)
 {
     run_on_wayland_thread_unless_destroyed(
-        [this, placement = placement]()
+        [this, placement = placement](auto window)
         {
             requested_size = placement.size;
             window->handle_resize(placement.top_left, placement.size);
@@ -133,7 +132,7 @@ void mf::WaylandSurfaceObserver::input_consumed(ms::Surface const*, MirEvent con
         std::shared_ptr<MirEvent> owned_event = mev::clone_event(*event);
 
         run_on_wayland_thread_unless_destroyed(
-            [this, owned_event]()
+            [this, owned_event](auto)
             {
                 auto const input_event = mir_event_get_input_event(owned_event.get());
                 input_dispatcher->handle_event(input_event);
@@ -146,7 +145,14 @@ auto mf::WaylandSurfaceObserver::latest_timestamp() const -> std::chrono::nanose
     return input_dispatcher->latest_timestamp();
 }
 
-void mf::WaylandSurfaceObserver::run_on_wayland_thread_unless_destroyed(std::function<void()>&& work)
+void mf::WaylandSurfaceObserver::run_on_wayland_thread_unless_destroyed(
+    std::function<void(WindowWlSurfaceRole*)>&& work)
 {
-    seat->spawn(run_unless(destroyed, work));
+    seat->spawn([work = std::move(work), self = mw::make_weak(this)]()
+        {
+            if (self && self.value().window)
+            {
+                work(&self.value().window.value());
+            }
+        });
 }
