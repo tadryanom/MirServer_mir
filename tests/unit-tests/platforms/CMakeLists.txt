@@ -1,5 +1,5 @@
-if (MIR_BUILD_PLATFORM_MESA_KMS)
-  add_subdirectory(mesa/)
+if (MIR_BUILD_PLATFORM_GBM_KMS)
+  add_subdirectory(gbm/)
 endif()
 
 if (MIR_BUILD_PLATFORM_EGLSTREAM_KMS)
