@@ -44,6 +44,7 @@ public:
 
     virtual ~LifetimeTracker();
     auto destroyed_flag() const -> std::shared_ptr<bool>;
+    void mark_destroued() const;
 
 private:
     std::shared_ptr<bool> mutable destroyed{nullptr};
