@@ -131,11 +131,6 @@ bool mw::LayerShellV1::is_instance(wl_resource* resource)
     return wl_resource_instance_of(resource, &zwlr_layer_shell_v1_interface_data, Thunks::request_vtable);
 }
 
-void mw::LayerShellV1::destroy_wayland_object() const
-{
-    wl_resource_destroy(resource);
-}
-
 mw::LayerShellV1::Global::Global(wl_display* display, Version<1>)
     : wayland::Global{
           wl_global_create(
@@ -272,7 +267,7 @@ struct mw::LayerSurfaceV1::Thunks
         auto me = static_cast<LayerSurfaceV1*>(wl_resource_get_user_data(resource));
         try
         {
-            me->destroy();
+            wl_resource_destroy(me->resource);
         }
         catch(...)
         {
@@ -322,11 +317,6 @@ void mw::LayerSurfaceV1::send_closed_event() const
 bool mw::LayerSurfaceV1::is_instance(wl_resource* resource)
 {
     return wl_resource_instance_of(resource, &zwlr_layer_surface_v1_interface_data, Thunks::request_vtable);
-}
-
-void mw::LayerSurfaceV1::destroy_wayland_object() const
-{
-    wl_resource_destroy(resource);
 }
 
 struct wl_interface const* mw::LayerSurfaceV1::Thunks::get_popup_types[] {

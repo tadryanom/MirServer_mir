@@ -26,7 +26,14 @@ Request::Request(xmlpp::Element const& node, std::string const& class_name)
 // TODO: Decide whether to resolve wl_resource* to wrapped types (ie: Region, Surface, etc).
 Emitter Request::virtual_mir_prototype() const
 {
-    return {"virtual void ", name, "(", mir_args(), ") = 0;"};
+    if (non_virtual_destructor())
+    {
+        return nullptr;
+    }
+    else
+    {
+        return {"virtual void ", name, "(", mir_args(), ") = 0;"};
+    }
 }
 
 // TODO: Decide whether to resolve wl_resource* to wrapped types (ie: Region, Surface, etc).
@@ -38,7 +45,9 @@ Emitter Request::thunk_impl() const
             wl2mir_converters(),
             "try",
             Block{
-                {"me->", name, "(", mir_call_args(), ");"}
+                non_virtual_destructor() ?
+                Emitter{"wl_resource_destroy(me->resource);"} :
+                Emitter{"me->", name, "(", mir_call_args(), ");"}
             },
             "catch(...)",
             Block{
@@ -89,4 +98,10 @@ Emitter Request::mir_call_args() const
     for (auto& arg : arguments)
         call_args.push_back(arg.call_fragment());
     return Emitter::seq(call_args, ", ");
+}
+
+auto Request::non_virtual_destructor() const -> bool
+{
+    // return true if not destructor
+    return is_destructor && arguments.empty();
 }

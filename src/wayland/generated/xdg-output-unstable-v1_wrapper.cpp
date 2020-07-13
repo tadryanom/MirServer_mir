@@ -53,7 +53,7 @@ struct mw::XdgOutputManagerV1::Thunks
         auto me = static_cast<XdgOutputManagerV1*>(wl_resource_get_user_data(resource));
         try
         {
-            me->destroy();
+            wl_resource_destroy(me->resource);
         }
         catch(...)
         {
@@ -137,11 +137,6 @@ bool mw::XdgOutputManagerV1::is_instance(wl_resource* resource)
     return wl_resource_instance_of(resource, &zxdg_output_manager_v1_interface_data, Thunks::request_vtable);
 }
 
-void mw::XdgOutputManagerV1::destroy_wayland_object() const
-{
-    wl_resource_destroy(resource);
-}
-
 mw::XdgOutputManagerV1::Global::Global(wl_display* display, Version<3>)
     : wayland::Global{
           wl_global_create(
@@ -186,7 +181,7 @@ struct mw::XdgOutputV1::Thunks
         auto me = static_cast<XdgOutputV1*>(wl_resource_get_user_data(resource));
         try
         {
-            me->destroy();
+            wl_resource_destroy(me->resource);
         }
         catch(...)
         {
@@ -262,11 +257,6 @@ void mw::XdgOutputV1::send_description_event(std::string const& description) con
 bool mw::XdgOutputV1::is_instance(wl_resource* resource)
 {
     return wl_resource_instance_of(resource, &zxdg_output_v1_interface_data, Thunks::request_vtable);
-}
-
-void mw::XdgOutputV1::destroy_wayland_object() const
-{
-    wl_resource_destroy(resource);
 }
 
 struct wl_message const mw::XdgOutputV1::Thunks::request_messages[] {

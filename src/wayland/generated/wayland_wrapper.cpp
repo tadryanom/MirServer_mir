@@ -89,11 +89,6 @@ void mw::Callback::send_done_event(uint32_t callback_data) const
     wl_resource_post_event(resource, Opcode::done, callback_data);
 }
 
-void mw::Callback::destroy_wayland_object() const
-{
-    wl_resource_destroy(resource);
-}
-
 struct wl_message const mw::Callback::Thunks::event_messages[] {
     {"done", "u", all_null_types}};
 
@@ -205,11 +200,6 @@ bool mw::Compositor::is_instance(wl_resource* resource)
     return wl_resource_instance_of(resource, &wl_compositor_interface_data, Thunks::request_vtable);
 }
 
-void mw::Compositor::destroy_wayland_object() const
-{
-    wl_resource_destroy(resource);
-}
-
 mw::Compositor::Global::Global(wl_display* display, Version<4>)
     : wayland::Global{
           wl_global_create(
@@ -276,7 +266,7 @@ struct mw::ShmPool::Thunks
         auto me = static_cast<ShmPool*>(wl_resource_get_user_data(resource));
         try
         {
-            me->destroy();
+            wl_resource_destroy(me->resource);
         }
         catch(...)
         {
@@ -328,11 +318,6 @@ mw::ShmPool::~ShmPool()
 bool mw::ShmPool::is_instance(wl_resource* resource)
 {
     return wl_resource_instance_of(resource, &wl_shm_pool_interface_data, Thunks::request_vtable);
-}
-
-void mw::ShmPool::destroy_wayland_object() const
-{
-    wl_resource_destroy(resource);
 }
 
 struct wl_interface const* mw::ShmPool::Thunks::create_buffer_types[] {
@@ -447,11 +432,6 @@ bool mw::Shm::is_instance(wl_resource* resource)
     return wl_resource_instance_of(resource, &wl_shm_interface_data, Thunks::request_vtable);
 }
 
-void mw::Shm::destroy_wayland_object() const
-{
-    wl_resource_destroy(resource);
-}
-
 mw::Shm::Global::Global(wl_display* display, Version<1>)
     : wayland::Global{
           wl_global_create(
@@ -498,7 +478,7 @@ struct mw::Buffer::Thunks
         auto me = static_cast<Buffer*>(wl_resource_get_user_data(resource));
         try
         {
-            me->destroy();
+            wl_resource_destroy(me->resource);
         }
         catch(...)
         {
@@ -542,11 +522,6 @@ void mw::Buffer::send_release_event() const
 bool mw::Buffer::is_instance(wl_resource* resource)
 {
     return wl_resource_instance_of(resource, &wl_buffer_interface_data, Thunks::request_vtable);
-}
-
-void mw::Buffer::destroy_wayland_object() const
-{
-    wl_resource_destroy(resource);
 }
 
 struct wl_message const mw::Buffer::Thunks::request_messages[] {
@@ -606,7 +581,7 @@ struct mw::DataOffer::Thunks
         auto me = static_cast<DataOffer*>(wl_resource_get_user_data(resource));
         try
         {
-            me->destroy();
+            wl_resource_destroy(me->resource);
         }
         catch(...)
         {
@@ -699,11 +674,6 @@ bool mw::DataOffer::is_instance(wl_resource* resource)
     return wl_resource_instance_of(resource, &wl_data_offer_interface_data, Thunks::request_vtable);
 }
 
-void mw::DataOffer::destroy_wayland_object() const
-{
-    wl_resource_destroy(resource);
-}
-
 struct wl_message const mw::DataOffer::Thunks::request_messages[] {
     {"accept", "u?s", all_null_types},
     {"receive", "sh", all_null_types},
@@ -752,7 +722,7 @@ struct mw::DataSource::Thunks
         auto me = static_cast<DataSource*>(wl_resource_get_user_data(resource));
         try
         {
-            me->destroy();
+            wl_resource_destroy(me->resource);
         }
         catch(...)
         {
@@ -858,11 +828,6 @@ bool mw::DataSource::is_instance(wl_resource* resource)
     return wl_resource_instance_of(resource, &wl_data_source_interface_data, Thunks::request_vtable);
 }
 
-void mw::DataSource::destroy_wayland_object() const
-{
-    wl_resource_destroy(resource);
-}
-
 struct wl_message const mw::DataSource::Thunks::request_messages[] {
     {"offer", "s", all_null_types},
     {"destroy", "", all_null_types},
@@ -938,7 +903,7 @@ struct mw::DataDevice::Thunks
         auto me = static_cast<DataDevice*>(wl_resource_get_user_data(resource));
         try
         {
-            me->release();
+            wl_resource_destroy(me->resource);
         }
         catch(...)
         {
@@ -1026,11 +991,6 @@ void mw::DataDevice::send_selection_event(std::experimental::optional<struct wl_
 bool mw::DataDevice::is_instance(wl_resource* resource)
 {
     return wl_resource_instance_of(resource, &wl_data_device_interface_data, Thunks::request_vtable);
-}
-
-void mw::DataDevice::destroy_wayland_object() const
-{
-    wl_resource_destroy(resource);
 }
 
 struct wl_interface const* mw::DataDevice::Thunks::start_drag_types[] {
@@ -1182,11 +1142,6 @@ bool mw::DataDeviceManager::is_instance(wl_resource* resource)
     return wl_resource_instance_of(resource, &wl_data_device_manager_interface_data, Thunks::request_vtable);
 }
 
-void mw::DataDeviceManager::destroy_wayland_object() const
-{
-    wl_resource_destroy(resource);
-}
-
 mw::DataDeviceManager::Global::Global(wl_display* display, Version<3>)
     : wayland::Global{
           wl_global_create(
@@ -1303,11 +1258,6 @@ mw::Shell::~Shell()
 bool mw::Shell::is_instance(wl_resource* resource)
 {
     return wl_resource_instance_of(resource, &wl_shell_interface_data, Thunks::request_vtable);
-}
-
-void mw::Shell::destroy_wayland_object() const
-{
-    wl_resource_destroy(resource);
 }
 
 mw::Shell::Global::Global(wl_display* display, Version<1>)
@@ -1541,11 +1491,6 @@ bool mw::ShellSurface::is_instance(wl_resource* resource)
     return wl_resource_instance_of(resource, &wl_shell_surface_interface_data, Thunks::request_vtable);
 }
 
-void mw::ShellSurface::destroy_wayland_object() const
-{
-    wl_resource_destroy(resource);
-}
-
 struct wl_interface const* mw::ShellSurface::Thunks::move_types[] {
     &wl_seat_interface_data,
     nullptr};
@@ -1622,7 +1567,7 @@ struct mw::Surface::Thunks
         auto me = static_cast<Surface*>(wl_resource_get_user_data(resource));
         try
         {
-            me->destroy();
+            wl_resource_destroy(me->resource);
         }
         catch(...)
         {
@@ -1818,11 +1763,6 @@ bool mw::Surface::is_instance(wl_resource* resource)
     return wl_resource_instance_of(resource, &wl_surface_interface_data, Thunks::request_vtable);
 }
 
-void mw::Surface::destroy_wayland_object() const
-{
-    wl_resource_destroy(resource);
-}
-
 struct wl_interface const* mw::Surface::Thunks::attach_types[] {
     &wl_buffer_interface_data,
     nullptr,
@@ -1947,7 +1887,7 @@ struct mw::Seat::Thunks
         auto me = static_cast<Seat*>(wl_resource_get_user_data(resource));
         try
         {
-            me->release();
+            wl_resource_destroy(me->resource);
         }
         catch(...)
         {
@@ -2030,11 +1970,6 @@ bool mw::Seat::is_instance(wl_resource* resource)
     return wl_resource_instance_of(resource, &wl_seat_interface_data, Thunks::request_vtable);
 }
 
-void mw::Seat::destroy_wayland_object() const
-{
-    wl_resource_destroy(resource);
-}
-
 mw::Seat::Global::Global(wl_display* display, Version<6>)
     : wayland::Global{
           wl_global_create(
@@ -2110,7 +2045,7 @@ struct mw::Pointer::Thunks
         auto me = static_cast<Pointer*>(wl_resource_get_user_data(resource));
         try
         {
-            me->release();
+            wl_resource_destroy(me->resource);
         }
         catch(...)
         {
@@ -2224,11 +2159,6 @@ bool mw::Pointer::is_instance(wl_resource* resource)
     return wl_resource_instance_of(resource, &wl_pointer_interface_data, Thunks::request_vtable);
 }
 
-void mw::Pointer::destroy_wayland_object() const
-{
-    wl_resource_destroy(resource);
-}
-
 struct wl_interface const* mw::Pointer::Thunks::set_cursor_types[] {
     nullptr,
     &wl_surface_interface_data,
@@ -2280,7 +2210,7 @@ struct mw::Keyboard::Thunks
         auto me = static_cast<Keyboard*>(wl_resource_get_user_data(resource));
         try
         {
-            me->release();
+            wl_resource_destroy(me->resource);
         }
         catch(...)
         {
@@ -2359,11 +2289,6 @@ bool mw::Keyboard::is_instance(wl_resource* resource)
     return wl_resource_instance_of(resource, &wl_keyboard_interface_data, Thunks::request_vtable);
 }
 
-void mw::Keyboard::destroy_wayland_object() const
-{
-    wl_resource_destroy(resource);
-}
-
 struct wl_interface const* mw::Keyboard::Thunks::enter_types[] {
     nullptr,
     &wl_surface_interface_data,
@@ -2403,7 +2328,7 @@ struct mw::Touch::Thunks
         auto me = static_cast<Touch*>(wl_resource_get_user_data(resource));
         try
         {
-            me->release();
+            wl_resource_destroy(me->resource);
         }
         catch(...)
         {
@@ -2497,11 +2422,6 @@ bool mw::Touch::is_instance(wl_resource* resource)
     return wl_resource_instance_of(resource, &wl_touch_interface_data, Thunks::request_vtable);
 }
 
-void mw::Touch::destroy_wayland_object() const
-{
-    wl_resource_destroy(resource);
-}
-
 struct wl_interface const* mw::Touch::Thunks::down_types[] {
     nullptr,
     nullptr,
@@ -2541,7 +2461,7 @@ struct mw::Output::Thunks
         auto me = static_cast<Output*>(wl_resource_get_user_data(resource));
         try
         {
-            me->release();
+            wl_resource_destroy(me->resource);
         }
         catch(...)
         {
@@ -2638,11 +2558,6 @@ bool mw::Output::is_instance(wl_resource* resource)
     return wl_resource_instance_of(resource, &wl_output_interface_data, Thunks::request_vtable);
 }
 
-void mw::Output::destroy_wayland_object() const
-{
-    wl_resource_destroy(resource);
-}
-
 mw::Output::Global::Global(wl_display* display, Version<3>)
     : wayland::Global{
           wl_global_create(
@@ -2697,7 +2612,7 @@ struct mw::Region::Thunks
         auto me = static_cast<Region*>(wl_resource_get_user_data(resource));
         try
         {
-            me->destroy();
+            wl_resource_destroy(me->resource);
         }
         catch(...)
         {
@@ -2763,11 +2678,6 @@ bool mw::Region::is_instance(wl_resource* resource)
     return wl_resource_instance_of(resource, &wl_region_interface_data, Thunks::request_vtable);
 }
 
-void mw::Region::destroy_wayland_object() const
-{
-    wl_resource_destroy(resource);
-}
-
 struct wl_message const mw::Region::Thunks::request_messages[] {
     {"destroy", "", all_null_types},
     {"add", "iiii", all_null_types},
@@ -2794,7 +2704,7 @@ struct mw::Subcompositor::Thunks
         auto me = static_cast<Subcompositor*>(wl_resource_get_user_data(resource));
         try
         {
-            me->destroy();
+            wl_resource_destroy(me->resource);
         }
         catch(...)
         {
@@ -2878,11 +2788,6 @@ bool mw::Subcompositor::is_instance(wl_resource* resource)
     return wl_resource_instance_of(resource, &wl_subcompositor_interface_data, Thunks::request_vtable);
 }
 
-void mw::Subcompositor::destroy_wayland_object() const
-{
-    wl_resource_destroy(resource);
-}
-
 mw::Subcompositor::Global::Global(wl_display* display, Version<1>)
     : wayland::Global{
           wl_global_create(
@@ -2928,7 +2833,7 @@ struct mw::Subsurface::Thunks
         auto me = static_cast<Subsurface*>(wl_resource_get_user_data(resource));
         try
         {
-            me->destroy();
+            wl_resource_destroy(me->resource);
         }
         catch(...)
         {
@@ -3033,11 +2938,6 @@ mw::Subsurface::~Subsurface()
 bool mw::Subsurface::is_instance(wl_resource* resource)
 {
     return wl_resource_instance_of(resource, &wl_subsurface_interface_data, Thunks::request_vtable);
-}
-
-void mw::Subsurface::destroy_wayland_object() const
-{
-    wl_resource_destroy(resource);
 }
 
 struct wl_interface const* mw::Subsurface::Thunks::place_above_types[] {

@@ -24,7 +24,8 @@
 Method::Method(xmlpp::Element const& node, std::string const& class_name, bool is_event)
     : name{node.get_attribute_value("name")},
       class_name{class_name},
-      min_version{get_since_version(node)}
+      min_version{get_since_version(node)},
+      is_destructor{get_type(node) == "destructor"}
 {
     for (auto const& child : node.get_children("arg"))
     {
@@ -121,6 +122,18 @@ int Method::get_since_version(xmlpp::Element const& node)
     catch (std::invalid_argument const&)
     {
         return 0;
+    }
+}
+
+auto Method::get_type(xmlpp::Element const& node) -> std::string
+{
+    try
+    {
+        return node.get_attribute_value("type");
+    }
+    catch (std::invalid_argument const&)
+    {
+        return "";
     }
 }
 

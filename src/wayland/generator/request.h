@@ -48,6 +48,9 @@ protected:
 
     // arguments to call the virtual mir function call (just names, no types)
     Emitter mir_call_args() const;
+
+    // if this request has a virtual function (in contrast to most destructors, which don't)
+    auto non_virtual_destructor() const -> bool;
 };
 
 #endif // MIR_WAYLAND_GENERATOR_REQUEST_H

@@ -48,10 +48,12 @@ protected:
     bool use_null_types() const;
 
     static int get_since_version(xmlpp::Element const& node);
+    static auto get_type(xmlpp::Element const& node) -> std::string;
 
     std::string const name;
     std::string const class_name;
     int const min_version;
+    bool const is_destructor;
     std::vector<Argument> arguments;
 };
 

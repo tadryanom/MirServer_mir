@@ -101,7 +101,6 @@ Emitter Interface::declaration() const
                 destructor_prototype(),
             },
             event_prototypes(),
-            {"void destroy_wayland_object() const;"},
             member_vars(),
             enum_declarations(),
             event_opcodes(),
@@ -135,12 +134,6 @@ Emitter Interface::implementation() const
             destructor_impl(),
             event_impls(),
             is_instance_impl(),
-            Lines{
-                {"void ", nmspace, "destroy_wayland_object() const"},
-                Block{
-                    {"wl_resource_destroy(resource);"}
-                }
-            },
             (global ? global.value().implementation() : nullptr),
             types_init(),
         }

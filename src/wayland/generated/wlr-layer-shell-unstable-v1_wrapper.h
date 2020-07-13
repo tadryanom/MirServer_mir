@@ -33,8 +33,6 @@ public:
     LayerShellV1(struct wl_resource* resource, Version<1>);
     virtual ~LayerShellV1();
 
-    void destroy_wayland_object() const;
-
     struct wl_client* const client;
     struct wl_resource* const resource;
 
@@ -86,8 +84,6 @@ public:
     void send_configure_event(uint32_t serial, uint32_t width, uint32_t height) const;
     void send_closed_event() const;
 
-    void destroy_wayland_object() const;
-
     struct wl_client* const client;
     struct wl_resource* const resource;
 
@@ -124,7 +120,6 @@ private:
     virtual void set_keyboard_interactivity(uint32_t keyboard_interactivity) = 0;
     virtual void get_popup(struct wl_resource* popup) = 0;
     virtual void ack_configure(uint32_t serial) = 0;
-    virtual void destroy() = 0;
 };
 
 }

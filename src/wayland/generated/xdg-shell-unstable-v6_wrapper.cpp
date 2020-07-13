@@ -58,7 +58,7 @@ struct mw::XdgShellV6::Thunks
         auto me = static_cast<XdgShellV6*>(wl_resource_get_user_data(resource));
         try
         {
-            me->destroy();
+            wl_resource_destroy(me->resource);
         }
         catch(...)
         {
@@ -182,11 +182,6 @@ bool mw::XdgShellV6::is_instance(wl_resource* resource)
     return wl_resource_instance_of(resource, &zxdg_shell_v6_interface_data, Thunks::request_vtable);
 }
 
-void mw::XdgShellV6::destroy_wayland_object() const
-{
-    wl_resource_destroy(resource);
-}
-
 mw::XdgShellV6::Global::Global(wl_display* display, Version<1>)
     : wayland::Global{
           wl_global_create(
@@ -241,7 +236,7 @@ struct mw::XdgPositionerV6::Thunks
         auto me = static_cast<XdgPositionerV6*>(wl_resource_get_user_data(resource));
         try
         {
-            me->destroy();
+            wl_resource_destroy(me->resource);
         }
         catch(...)
         {
@@ -359,11 +354,6 @@ bool mw::XdgPositionerV6::is_instance(wl_resource* resource)
     return wl_resource_instance_of(resource, &zxdg_positioner_v6_interface_data, Thunks::request_vtable);
 }
 
-void mw::XdgPositionerV6::destroy_wayland_object() const
-{
-    wl_resource_destroy(resource);
-}
-
 struct wl_message const mw::XdgPositionerV6::Thunks::request_messages[] {
     {"destroy", "", all_null_types},
     {"set_size", "ii", all_null_types},
@@ -398,7 +388,7 @@ struct mw::XdgSurfaceV6::Thunks
         auto me = static_cast<XdgSurfaceV6*>(wl_resource_get_user_data(resource));
         try
         {
-            me->destroy();
+            wl_resource_destroy(me->resource);
         }
         catch(...)
         {
@@ -512,11 +502,6 @@ bool mw::XdgSurfaceV6::is_instance(wl_resource* resource)
     return wl_resource_instance_of(resource, &zxdg_surface_v6_interface_data, Thunks::request_vtable);
 }
 
-void mw::XdgSurfaceV6::destroy_wayland_object() const
-{
-    wl_resource_destroy(resource);
-}
-
 struct wl_interface const* mw::XdgSurfaceV6::Thunks::get_toplevel_types[] {
     &zxdg_toplevel_v6_interface_data};
 
@@ -558,7 +543,7 @@ struct mw::XdgToplevelV6::Thunks
         auto me = static_cast<XdgToplevelV6*>(wl_resource_get_user_data(resource));
         try
         {
-            me->destroy();
+            wl_resource_destroy(me->resource);
         }
         catch(...)
         {
@@ -793,11 +778,6 @@ bool mw::XdgToplevelV6::is_instance(wl_resource* resource)
     return wl_resource_instance_of(resource, &zxdg_toplevel_v6_interface_data, Thunks::request_vtable);
 }
 
-void mw::XdgToplevelV6::destroy_wayland_object() const
-{
-    wl_resource_destroy(resource);
-}
-
 struct wl_interface const* mw::XdgToplevelV6::Thunks::set_parent_types[] {
     &zxdg_toplevel_v6_interface_data};
 
@@ -871,7 +851,7 @@ struct mw::XdgPopupV6::Thunks
         auto me = static_cast<XdgPopupV6*>(wl_resource_get_user_data(resource));
         try
         {
-            me->destroy();
+            wl_resource_destroy(me->resource);
         }
         catch(...)
         {
@@ -934,11 +914,6 @@ void mw::XdgPopupV6::send_popup_done_event() const
 bool mw::XdgPopupV6::is_instance(wl_resource* resource)
 {
     return wl_resource_instance_of(resource, &zxdg_popup_v6_interface_data, Thunks::request_vtable);
-}
-
-void mw::XdgPopupV6::destroy_wayland_object() const
-{
-    wl_resource_destroy(resource);
 }
 
 struct wl_interface const* mw::XdgPopupV6::Thunks::grab_types[] {

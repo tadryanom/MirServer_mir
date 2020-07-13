@@ -248,15 +248,10 @@ void mf::WlSurface::send_frame_callbacks()
         {
             // TODO: argument should be a timestamp
             frame->send_done_event(0);
-            frame->destroy_wayland_object();
+            wl_resource_destroy(frame->resource);
         }
     }
     frame_callbacks.clear();
-}
-
-void mf::WlSurface::destroy()
-{
-    destroy_wayland_object();
 }
 
 void mf::WlSurface::attach(std::experimental::optional<wl_resource*> const& buffer, int32_t x, int32_t y)

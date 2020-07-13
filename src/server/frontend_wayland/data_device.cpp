@@ -42,6 +42,7 @@ struct DataDevice;
 struct DataOffer : mw::DataOffer
 {
     DataOffer(DataSource* source, DataDevice* device);
+    ~DataOffer();
 
     void accept(uint32_t serial, std::experimental::optional<std::string> const& mime_type) override
     {
@@ -49,8 +50,6 @@ struct DataOffer : mw::DataOffer
     }
 
     void receive(std::string const& mime_type, mir::Fd fd) override;
-
-    void destroy() override;
 
     void finish() override
     {
@@ -78,8 +77,6 @@ public:
     ~DataSource();
 
     void offer(std::string const& mime_type) override;
-
-    void destroy() override;
 
     void set_actions(uint32_t dnd_actions) override
     {
@@ -119,8 +116,6 @@ struct DataDevice : mw::DataDevice, mf::WlSeat::ListenerTracker
     {
         (void)source, (void)serial;
     }
-
-    void release() override;
 
     void notify_new(DataSource* source);
     void notify_destroyed(DataSource* source);
@@ -176,13 +171,6 @@ void DataSource::offer(std::string const& mime_type)
         listener->offer(mime_type);
 }
 
-void DataSource::destroy()
-{
-    destroyed = true;
-    manager->notify_destroyed(this);
-    destroy_wayland_object();
-}
-
 void DataSource::add_listener(DataOffer* listener)
 {
     listeners.push_back(listener);
@@ -200,8 +188,8 @@ void DataSource::send_send(std::string const& mime_type, mir::Fd fd)
 
 DataSource::~DataSource()
 {
-    if (!destroyed)
-        manager->notify_destroyed(this);
+    destroyed = true;
+    manager->notify_destroyed(this);
 }
 
 DataDeviceManager::DataDeviceManager(struct wl_display* display) :
@@ -302,13 +290,6 @@ void DataDevice::notify_destroyed(DataSource* source)
     }
 }
 
-void DataDevice::release()
-{
-    manager->remove_listener(this);
-    seat->remove_focus_listener(this);
-    destroy_wayland_object();
-}
-
 void DataDevice::focus_on(wl_client* focus)
 {
     has_focus = client == focus;
@@ -332,6 +313,11 @@ DataOffer::DataOffer(DataSource* source, DataDevice* device) :
     device->send_selection_event(resource);
 }
 
+~DataOffer::DataOffer()
+{
+    source->remove_listener(this);
+}
+
 void DataOffer::offer(std::string const& mime_type)
 {
     send_offer_event(mime_type);
@@ -340,12 +326,6 @@ void DataOffer::offer(std::string const& mime_type)
 void DataOffer::receive(std::string const& mime_type, mir::Fd fd)
 {
     source->send_send(mime_type, fd);
-}
-
-void DataOffer::destroy()
-{
-    source->remove_listener(this);
-    destroy_wayland_object();
 }
 
 auto mf::create_data_device_manager(struct wl_display* display)
