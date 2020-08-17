@@ -30,6 +30,8 @@
 #include "xdg-output-unstable-v1_wrapper.h"
 #include "pointer-constraints-unstable-v1_wrapper.h"
 #include "pointer_constraints_unstable_v1.h"
+#include "relative-pointer-unstable-v1_wrapper.h"
+#include "relative_pointer_unstable_v1.h"
 
 #include "mir/graphics/platform.h"
 #include "mir/options/default_configuration.h"
@@ -72,6 +74,10 @@ std::vector<ExtensionBuilder> const internal_extension_builders = {
     {
         mw::XdgOutputManagerV1::interface_name, [](auto const& ctx) -> std::shared_ptr<void>
             { return create_xdg_output_manager_v1(ctx.display, ctx.output_manager); }
+    },
+    {
+        mw::RelativePointerManagerV1::interface_name, [](auto const& ctx) -> std::shared_ptr<void>
+            { return mf::create_relative_pointer_unstable_v1(ctx.display, ctx.shell); }
     },
     {
         mw::PointerConstraintsV1::interface_name, [](auto const& ctx) -> std::shared_ptr<void>
@@ -164,7 +170,8 @@ auto mf::get_standard_extensions() -> std::vector<std::string>
         mw::Shell::interface_name,
         mw::XdgWmBase::interface_name,
         mw::XdgShellV6::interface_name,
-        mw::PointerConstraintsV1::interface_name};
+        mw::PointerConstraintsV1::interface_name,
+        mw::RelativePointerManagerV1::interface_name};
 }
 
 auto mf::get_supported_extensions() -> std::vector<std::string>
