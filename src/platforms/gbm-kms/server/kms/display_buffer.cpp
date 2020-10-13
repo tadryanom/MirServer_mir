@@ -29,6 +29,7 @@
 #include "egl_helper.h"
 #include "mir/graphics/egl_error.h"
 #include "mir/graphics/gl_config.h"
+#include "mir/graphics/dmabuf_buffer.h"
 
 #include <boost/throw_exception.hpp>
 #include <EGL/egl.h>
@@ -534,12 +535,11 @@ bool mgg::DisplayBuffer::overlay(RenderableList const& renderable_list)
         if (bypass_it != renderable_list.rend())
         {
             auto bypass_buffer = (*bypass_it)->buffer();
-            auto native = std::dynamic_pointer_cast<mgg::NativeBuffer>(bypass_buffer->native_buffer_handle());
-            if (native && native->flags & mir_buffer_flag_can_scanout &&
-                bypass_buffer->size() == surface.size() &&
-                !needs_bounce_buffer(*outputs.front(), native->bo))
+            auto dmabuf_image = dynamic_cast<mg::DMABufBuffer*>(bypass_buffer->native_buffer_base());
+            if (dmabuf_image &&
+                bypass_buffer->size() == surface.size())
             {
-                if (auto bufobj = outputs.front()->fb_for(native->bo))
+                if (auto bufobj = outputs.front()->fb_for(*dmabuf_image))
                 {
                     bypass_buf = bypass_buffer;
                     bypass_bufobj = bufobj;

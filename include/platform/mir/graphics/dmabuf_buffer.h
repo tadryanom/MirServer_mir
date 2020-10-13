@@ -46,6 +46,7 @@ public:
      * The format of this logical buffer, as in <drm_fourcc.h>
      */
     virtual auto drm_fourcc() const -> uint32_t = 0;
+
     /**
      * The DRM modifier of this logical buffer, if specified.
      * \note    Both the DRM and Wayland APIs accept per-plane modifiers. However, this
@@ -54,7 +55,10 @@ public:
      *          modifiers for different planes.
      */
     virtual auto modifier() const -> std::optional<uint64_t> = 0;
+
     virtual auto planes() const -> std::vector<PlaneDescriptor const> const& = 0;
+
+    virtual void register_destruction_listener(std::function<void()> listener) = 0;
 };
 }
 }

@@ -669,6 +669,47 @@ mgg::FBHandle* mgg::RealKMSOutput::fb_for(gbm_bo* bo) const
     return bufobj;
 }
 
+auto mgg::RealKMSOutput::fb_for(mg::DMABufBuffer const& image) const -> FBHandle*
+{
+    /*
+     * Check if we have already set up this gbm_bo (the gbm-kms implementation is
+     * free to reuse gbm_bos). If so, return the associated FBHandle.
+     */
+    auto bufobj = static_cast<FBHandle*>(gbm_bo_get_user_data(bo));
+    if (bufobj)
+        return bufobj;
+
+    uint32_t fb_id{0};
+    uint32_t handles[4] = {gbm_bo_get_handle(bo).u32, 0, 0, 0};
+    uint32_t strides[4] = {gbm_bo_get_stride(bo), 0, 0, 0};
+    uint32_t offsets[4] = {0, 0, 0, 0};
+
+    auto format = gbm_bo_get_format(bo);
+    /*
+     * Mir might use the old GBM_BO_ enum formats, but KMS and the rest of
+     * the world need fourcc formats, so convert...
+     */
+    if (format == GBM_BO_FORMAT_XRGB8888)
+        format = GBM_FORMAT_XRGB8888;
+    else if (format == GBM_BO_FORMAT_ARGB8888)
+        format = GBM_FORMAT_ARGB8888;
+
+    auto const width = gbm_bo_get_width(bo);
+    auto const height = gbm_bo_get_height(bo);
+
+    /* Create a KMS FB object with the gbm_bo attached to it. */
+    auto ret = drmModeAddFB2(drm_fd_, width, height, format,
+                             handles, strides, offsets, &fb_id, 0);
+    if (ret)
+        return nullptr;
+
+    /* Create a FBHandle and associate it with the gbm_bo */
+    bufobj = new FBHandle{bo, fb_id};
+    gbm_bo_set_user_data(bo, bufobj, bo_user_data_destroy);
+
+    return bufobj;
+}
+
 bool mgg::RealKMSOutput::buffer_requires_migration(gbm_bo* bo) const
 {
     /*

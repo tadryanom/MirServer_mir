@@ -70,6 +70,7 @@ public:
     void update_from_hardware_state(DisplayConfigurationOutput& output) const override;
 
     FBHandle* fb_for(gbm_bo* bo) const override;
+    auto fb_for(DMABufBuffer const& image) const -> FBHandle* override;
 
     bool buffer_requires_migration(gbm_bo* bo) const override;
     int drm_fd() const override;

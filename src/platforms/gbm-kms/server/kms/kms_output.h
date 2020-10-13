@@ -24,6 +24,7 @@
 #include "mir/geometry/displacement.h"
 #include "mir/graphics/display_configuration.h"
 #include "mir/graphics/frame.h"
+#include "mir/graphics/dmabuf_buffer.h"
 #include "mir_toolkit/common.h"
 
 #include "kms-utils/drm_mode_resources.h"
@@ -93,6 +94,7 @@ public:
      */
     virtual void update_from_hardware_state(DisplayConfigurationOutput& to_update) const = 0;
     virtual FBHandle* fb_for(gbm_bo* bo) const = 0;
+    virtual auto fb_for(DMABufBuffer const& buffer) const -> FBHandle* = 0;
 
     /**
      * Check whether buffer need to be migrated to GPU-private memory for display.
