@@ -61,14 +61,6 @@ execute: |
         apt-get --yes install qemu-user-static binfmt-support
     fi
 
-    # Get any out-of-archive dependencies
-    # (Currently just libnvidia-egl-wayland-dev)
-    # Do this after setting up cross-building, so that we get the right
-    # architecture set.
-    for repo in ppa:mir-team/{release,dev}; do
-        add-apt-repository --yes --update ${repo} || add-apt-repository --yes --remove ${repo}
-    done
-
     cd $SPREAD_PATH
 
     # Mark the "release" in the changelog
