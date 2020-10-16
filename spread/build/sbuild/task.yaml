@@ -3,13 +3,17 @@ environment:
     NO_PKG_MANGLE: 1
 
 systems: [ubuntu-*]
+variants:
+- ubuntu*
+- debian*
 
-summary: Build Ubuntu packages
+summary: Build Deb packages
 
 execute: |
     add-apt-repository universe
     apt-get update
     apt-get install \
+        --no-install-recommends \
         --yes \
         sbuild \
         schroot \
@@ -26,9 +30,11 @@ execute: |
     # set host and build environment up
     source <( dpkg-architecture --print-set --host-arch ${ARCH} )
 
-    sg sbuild -c "mk-sbuild --arch=${DEB_BUILD_ARCH} --target=${DEB_HOST_ARCH} --eatmydata $(lsb_release --short --codename)"
+    [ "${PROPOSED}" != "true" ] && MKSBUILD_OPTS="--skip-proposed"
+
+    sg sbuild -c "mk-sbuild --arch=${DEB_BUILD_ARCH} --target=${DEB_HOST_ARCH} ${MKSBUILD_OPTS} --eatmydata ${RELEASE}"
 
     cd $SPREAD_PATH
     echo "export XDG_RUNTIME_DIR=/tmp" >> debian/opts.mk
 
-    sbuild -j $(nproc) -v -d $(lsb_release --short --codename) --build=${DEB_BUILD_ARCH} --host=${DEB_HOST_ARCH}
+    sbuild -j $(nproc) -v -d ${RELEASE} --build=${DEB_BUILD_ARCH} --host=${DEB_HOST_ARCH}
