@@ -30,14 +30,26 @@ execute: |
     # set host and build environment up
     source <( dpkg-architecture --print-set --host-arch ${ARCH} )
 
-    MKSBUILD_OPTS=()
+    MKSBUILD_OPTS=(
+      mk-sbuild
+      --eatmydata
+      ${RELEASE}
+    )
 
     [ "${PROPOSED}" == "true" ] || MKSBUILD_OPTS+=("--skip-proposed")
     [ "${DEB_BUILD_ARCH}" == "${DEB_HOST_ARCH}" ] || MKSBUILD_OPTS+=("--arch=${DEB_BUILD_ARCH}" "--target=${DEB_HOST_ARCH}")
 
-    sg sbuild -c "mk-sbuild ${MKSBUILD_OPTS[@]} --eatmydata ${RELEASE}"
+    sg sbuild -c "${MKSBUILD_OPTS[*]}"
 
     cd $SPREAD_PATH
     echo "export XDG_RUNTIME_DIR=/tmp" >> debian/opts.mk
 
-    sbuild -j $(nproc) -v -d ${RELEASE} --build=${DEB_BUILD_ARCH} --host=${DEB_HOST_ARCH}
+    SBUILD_OPTS=(
+      --jobs=$(nproc)
+      --verbose
+      --dist=${RELEASE}
+      --build=${DEB_BUILD_ARCH}
+      --host=${DEB_HOST_ARCH}
+    )
+
+    sbuild "${SBUILD_OPTS[@]}"
