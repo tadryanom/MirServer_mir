@@ -23,6 +23,7 @@ environment:
     ARCH/ubuntu_arm64: arm64
     ARCH/ubuntu_armhf: armhf
     ARCH/rpi: armhf
+    RELEASE: focal
     RELEASE/ubuntu: focal
     RELEASE/ubuntu_devel: devel
     RELEASE/ubuntu_bionic: bionic
