@@ -25,7 +25,7 @@ environment:
     ARCH/rpi: armhf
     RELEASE: focal
     RELEASE/ubuntu: focal
-    RELEASE/ubuntu_devel: devel
+    RELEASE/ubuntu_devel: groovy
     RELEASE/ubuntu_bionic: bionic
     RELEASE/debian_sid: sid
     PROPOSED: false
