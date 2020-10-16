@@ -52,4 +52,10 @@ execute: |
       --host=${DEB_HOST_ARCH}
     )
 
+    [ "${MIR_PPA}" == "true" ] && SBUILD_OPTS+=(
+      "--extra-repository=deb http://ppa.launchpad.net/mir-team/release/ubuntu ${RELEASE} main"
+      "--extra-repository=deb http://ppa.launchpad.net/mir-team/dev/ubuntu ${RELEASE} main"
+      "--extra-repository-key=${SPREAD_PATH}/spread/build/sbuild/mir-team.asc"
+    )
+
     sbuild "${SBUILD_OPTS[@]}"
